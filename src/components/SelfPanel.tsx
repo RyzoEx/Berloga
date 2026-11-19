@@ -1,0 +1,73 @@
+"use client";
+import { Gauge, Headphones, HeadphoneOff, LogOut, Mic, MicOff, PhoneOff } from "lucide-react";
+import type { Profile } from "@/lib/types";
+import type { useVoiceRoom } from "@/hooks/useVoiceRoom";
+
+type Props = {
+  profile: Profile;
+  voice: ReturnType<typeof useVoiceRoom>;
+  eco: boolean;
+  forcedEco: boolean;
+  onEco: (v: boolean) => void;
+  onSignOut: () => void;
+};
+
+export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut }: Props) {
+  const inRoom = voice.status === "connected";
+  const state = voice.sharing ? "стримит" : inRoom ? "в комнате" : "в сети";
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-line px-4 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{profile.username}</p>
+          <p className="label">{state}</p>
+        </div>
+        <button className="btn btn-icon" title="Выйти из аккаунта" aria-label="Выйти из аккаунта" onClick={onSignOut}>
+          <LogOut size={16} />
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          className="btn btn-live btn-icon"
+          aria-pressed={inRoom && !voice.micOn}
+          disabled={!inRoom || voice.deafened}
+          title={voice.micOn ? "Выключить микрофон" : "Включить микрофон"}
+          aria-label={voice.micOn ? "Выключить микрофон" : "Включить микрофон"}
+          onClick={voice.toggleMic}
+        >
+          {voice.micOn ? <Mic size={16} /> : <MicOff size={16} />}
+        </button>
+        <button
+          className="btn btn-live btn-icon"
+          aria-pressed={voice.deafened}
+          disabled={!inRoom}
+          title={voice.deafened ? "Включить звук" : "Отключить звук"}
+          aria-label={voice.deafened ? "Включить звук" : "Отключить звук"}
+          onClick={voice.toggleDeafen}
+        >
+          {voice.deafened ? <HeadphoneOff size={16} /> : <Headphones size={16} />}
+        </button>
+        <button
+          className="btn flex-1"
+          aria-pressed={eco}
+          disabled={forcedEco}
+          title={forcedEco ? "Включено администратором" : "Только низкий слой видео, звук на 16 кбит/с"}
+          onClick={() => onEco(!eco)}
+        >
+          <Gauge size={16} /> Экономия
+        </button>
+        <button
+          className="btn btn-icon"
+          disabled={!inRoom}
+          title="Выйти из комнаты"
+          aria-label="Выйти из комнаты"
+          onClick={voice.leave}
+        >
+          <PhoneOff size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}

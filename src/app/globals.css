@@ -1,0 +1,157 @@
+@import "@fontsource-variable/onest/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+@import "@fontsource-variable/unbounded/index.css";
+@import "tailwindcss";
+
+/*
+  Направление: пульт радиорубки. Плотно, моно-цифры, никакого стекла и свечения.
+  Цвет: бетон ночного двора + натриевый фонарь (янтарь) как единственный сигнал.
+  Красный только для эфира/микрофона выключен. Палитра заменяет стандартную целиком,
+  поэтому slate/indigo/purple из Tailwind здесь просто не существуют.
+*/
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-ground: #141515;
+  --color-panel: #1b1d1d;
+  --color-raised: #242727;
+  --color-line: #343838;
+  --color-text: #e4e1d9;
+  --color-dim: #9b9c96;
+  --color-faint: #666964;
+  --color-signal: #f0a020;
+  --color-signal-ink: #1c1304;
+  --color-live: #e8573f;
+  --color-ok: #6fb36f;
+
+  --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-display: "Unbounded Variable", "Onest Variable", sans-serif;
+
+  /* шкала радиусов: 0 / 2 / 4, больше не используется */
+  --radius-*: initial;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-ground);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+.btn:hover:not(:disabled) {
+  background: var(--color-line);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn[aria-pressed="true"] {
+  border-color: var(--color-signal);
+  color: var(--color-signal);
+}
+.btn-signal {
+  background: var(--color-signal);
+  border-color: var(--color-signal);
+  color: var(--color-signal-ink);
+}
+.btn-signal:hover:not(:disabled) {
+  background: #f5b13f;
+}
+.btn-live[aria-pressed="true"] {
+  border-color: var(--color-live);
+  color: var(--color-live);
+}
+.btn-icon {
+  width: 32px;
+  padding: 0;
+}
+
+.field {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xs);
+  background: var(--color-ground);
+  color: var(--color-text);
+}
+.field:focus {
+  border-color: var(--color-signal);
+  outline: none;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--color-line);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 16px;
+  margin-top: -7px;
+  border-radius: var(--radius-xs);
+  background: var(--color-signal);
+}
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

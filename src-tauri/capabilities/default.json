@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Окно грузит удалённый сайт и не вызывает IPC; права нужны только самому окну",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
