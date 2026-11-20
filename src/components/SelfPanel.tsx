@@ -1,5 +1,5 @@
 "use client";
-import { Gauge, Headphones, HeadphoneOff, LogOut, Mic, MicOff, PhoneOff } from "lucide-react";
+import { Gauge, Headphones, HeadphoneOff, LogOut, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import type { useVoiceRoom } from "@/hooks/useVoiceRoom";
 import { Avatar } from "./Avatar";
@@ -12,9 +12,10 @@ type Props = {
   forcedEco: boolean;
   onEco: (v: boolean) => void;
   onSignOut: () => void;
+  onSettings: () => void;
 };
 
-export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut }: Props) {
+export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut, onSettings }: Props) {
   const { openProfile } = useProfilesCtx();
   const inRoom = voice.status === "connected";
   const state = voice.sharing ? "стримит" : inRoom ? "в комнате" : "в сети";
@@ -29,9 +30,14 @@ export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut }: 
             <span className="label block">{state}</span>
           </span>
         </button>
-        <button className="btn btn-icon" title="Выйти из аккаунта" aria-label="Выйти из аккаунта" onClick={onSignOut}>
-          <LogOut size={16} />
-        </button>
+        <span className="flex gap-2">
+          <button className="btn btn-icon" title="Настройки" aria-label="Настройки" onClick={onSettings}>
+            <Settings size={16} />
+          </button>
+          <button className="btn btn-icon" title="Выйти из аккаунта" aria-label="Выйти из аккаунта" onClick={onSignOut}>
+            <LogOut size={16} />
+          </button>
+        </span>
       </div>
 
       <div className="flex gap-2">

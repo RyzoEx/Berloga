@@ -15,8 +15,10 @@ import { AdminPanel } from "./AdminPanel";
 import { ChatPanel } from "./ChatPanel";
 import { ProfileDialog } from "./ProfileDialog";
 import { ProfilesContext } from "./ProfilesContext";
+import { SettingsDialog, type RoomView } from "./SettingsDialog";
 
 const ECO_KEY = "berloga.eco";
+const VIEW_KEY = "berloga.view";
 
 export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile; onSignOut: () => void }) {
   const { profiles, patch } = useProfiles();
@@ -28,12 +30,21 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
   const [adminOpen, setAdminOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setViewState] = useState<RoomView>("list");
 
   useEffect(() => {
     try {
       setEcoLocal(localStorage.getItem(ECO_KEY) === "1");
+      setViewState(localStorage.getItem(VIEW_KEY) === "tiles" ? "tiles" : "list");
     } catch {}
   }, []);
+  const setView = (v: RoomView) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
+  };
   const setEco = (v: boolean) => {
     setEcoLocal(v);
     try {
@@ -78,7 +89,7 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
           <span className="font-display text-sm font-semibold tracking-tight">БЕРЛОГА</span>
         </div>
         <RoomList peers={peers} current={voice.roomId} connecting={voice.status === "connecting"} onJoin={voice.join} />
-        <SelfPanel profile={profile} voice={voice} eco={eco} forcedEco={forcedEco} onEco={setEco} onSignOut={onSignOut} />
+        <SelfPanel profile={profile} voice={voice} eco={eco} forcedEco={forcedEco} onEco={setEco} onSignOut={onSignOut} onSettings={() => setSettingsOpen(true)} />
       </aside>
 
       <main className="flex min-h-0 min-w-0 flex-col">
@@ -123,7 +134,7 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
         {voice.micError && <p className="border-b border-line px-4 py-2 text-dim">Микрофон недоступен, ты только слушаешь.</p>}
 
         <div className="flex min-h-0 flex-1">
-          <Stage voice={voice} eco={eco} settings={settings} />
+          <Stage voice={voice} eco={eco} settings={settings} view={view} />
           {chatOpen && <ChatPanel room={chatRoom} onRoom={setChatRoom} eco={eco} />}
         </div>
       </main>
@@ -144,6 +155,7 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
       {adminOpen && profile.is_admin && (
         <AdminPanel settings={settings} update={update} peers={peers} onClose={() => setAdminOpen(false)} />
       )}
+      {settingsOpen && <SettingsDialog view={view} onView={setView} onClose={() => setSettingsOpen(false)} />}
       {profileId && <ProfileDialog id={profileId} onClose={() => setProfileId(null)} />}
     </div>
     </ProfilesContext.Provider>

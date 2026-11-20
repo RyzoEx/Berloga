@@ -28,3 +28,26 @@ export function reconcileLatest(prev: ChatMessage[], fetched: ChatMessage[], pag
   const keep = prev.filter((m) => (full && ts(m) < oldest) || ts(m) > newest);
   return mergeMessages(keep, sorted);
 }
+
+// ---------- присутствие ----------
+import type { Peer } from "./types";
+
+/** То, что клиент публикует по сети: состояние + id соединения + время последнего изменения состояния. */
+export type WirePeer = Peer & { conn?: string; ts?: number };
+
+/**
+ * Список «кто где» для экрана.
+ * Свою строку берём из локального состояния: она не может отстать от того, что ты только что нажал.
+ * Чужие: если у человека несколько соединений (вкладка, окно в трее, не успевший закрыться «призрак»),
+ * побеждает то, где состояние менялось позже.
+ */
+export function resolvePeers(wire: WirePeer[], me: Peer): Peer[] {
+  const best = new Map<string, WirePeer>();
+  for (const p of wire) {
+    if (!p.user_id || p.user_id === me.user_id) continue;
+    const cur = best.get(p.user_id);
+    if (!cur || (p.ts ?? 0) >= (cur.ts ?? 0)) best.set(p.user_id, p);
+  }
+  const others = [...best.values()].map(({ conn: _c, ts: _t, ...peer }) => peer as Peer);
+  return [me, ...others];
+}
