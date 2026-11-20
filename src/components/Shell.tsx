@@ -16,6 +16,7 @@ import { ChatPanel } from "./ChatPanel";
 import { ProfileDialog } from "./ProfileDialog";
 import { ProfilesContext } from "./ProfilesContext";
 import { SettingsDialog, type RoomView } from "./SettingsDialog";
+import { DEFAULT, applyTheme, readTheme, THEME_KEY, type ClientTheme } from "@/lib/themes";
 
 const ECO_KEY = "berloga.eco";
 const VIEW_KEY = "berloga.view";
@@ -32,13 +33,19 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
   const [profileId, setProfileId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [view, setViewState] = useState<RoomView>("list");
+  const [clientTheme, setClientTheme] = useState<ClientTheme>(DEFAULT);
 
   useEffect(() => {
     try {
       setEcoLocal(localStorage.getItem(ECO_KEY) === "1");
+      setClientTheme(readTheme());
       setViewState(localStorage.getItem(VIEW_KEY) === "tiles" ? "tiles" : "list");
     } catch {}
   }, []);
+  useEffect(() => {
+    applyTheme(clientTheme);
+    try { localStorage.setItem(THEME_KEY, JSON.stringify(clientTheme)); } catch {}
+  }, [clientTheme]);
   const setView = (v: RoomView) => {
     setViewState(v);
     try {
@@ -83,7 +90,7 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
 
   return (
     <ProfilesContext.Provider value={ctx}>
-    <div className="grid h-full grid-cols-[288px_1fr]">
+    <div className="theme-shell grid h-full grid-cols-[288px_1fr]">
       <aside className="flex min-h-0 flex-col border-r border-line bg-panel">
         <div className="flex h-12 items-center border-b border-line px-4">
           <span className="font-display text-sm font-semibold tracking-tight">БЕРЛОГА</span>
@@ -155,7 +162,7 @@ export function Shell({ profile: sessionProfile, onSignOut }: { profile: Profile
       {adminOpen && profile.is_admin && (
         <AdminPanel settings={settings} update={update} peers={peers} onClose={() => setAdminOpen(false)} />
       )}
-      {settingsOpen && <SettingsDialog view={view} onView={setView} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsDialog view={view} onView={setView} theme={clientTheme} onTheme={setClientTheme} onClose={() => setSettingsOpen(false)} />}
       {profileId && <ProfileDialog id={profileId} onClose={() => setProfileId(null)} />}
     </div>
     </ProfilesContext.Provider>
