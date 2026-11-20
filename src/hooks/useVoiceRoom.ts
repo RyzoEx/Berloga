@@ -59,6 +59,7 @@ export function useVoiceRoom({ settings, eco }: Opts) {
   const [hidden, setHidden] = useState(false);
   const micBeforeDeafen = useRef(true);
   const baseVideoBps = useRef<number[]>([]);
+  const joinSeq = useRef(0); // номер последней попытки входа: устаревшие попытки сами отменяются
 
   // последние значения для обработчиков событий LiveKit
   const latest = useRef({ eco, settings, volumes, qualities, paused, hidden, deafened });
@@ -126,22 +127,31 @@ export function useVoiceRoom({ settings, eco }: Opts) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  const leave = useCallback(async () => {
-    const room = roomRef.current;
-    roomRef.current = null;
+  /** Всё, что относится к конкретному подключению, сбрасывается в одном месте (выход и обрыв). */
+  const resetLocal = useCallback(() => {
     baseVideoBps.current = [];
-    if (room) await room.disconnect();
     setRoomId(null);
     setStatus("idle");
     setDeafened(false);
     setPaused({});
     setQualities({});
+    setMicError(false);
+    setAudioBlocked(false);
     bump();
   }, []);
+
+  const leave = useCallback(async () => {
+    joinSeq.current++;
+    const room = roomRef.current;
+    roomRef.current = null;
+    if (room) await room.disconnect();
+    resetLocal();
+  }, [resetLocal]);
 
   const join = useCallback(
     async (id: string) => {
       if (roomRef.current) await leave();
+      const seq = ++joinSeq.current;
       setError(null);
       setMicError(false);
       setStatus("connecting");
@@ -158,6 +168,7 @@ export function useVoiceRoom({ settings, eco }: Opts) {
         });
         if (!res.ok) throw new Error(`Токен не выдан (${res.status})`);
         const { token, url } = (await res.json()) as { token: string; url: string };
+        if (seq !== joinSeq.current) return; // пока шёл запрос, выбрали другую комнату или вышли
 
         const room = new Room({
           adaptiveStream: true,
@@ -179,7 +190,10 @@ export function useVoiceRoom({ settings, eco }: Opts) {
             refresh();
             applyCaps();
           })
-          .on(RoomEvent.LocalTrackUnpublished, refresh)
+          .on(RoomEvent.LocalTrackUnpublished, (pub) => {
+            if (pub.source === Track.Source.ScreenShare) baseVideoBps.current = [];
+            refresh();
+          })
           .on(RoomEvent.TrackPublished, () => {
             refresh();
             syncRemote();
@@ -203,13 +217,15 @@ export function useVoiceRoom({ settings, eco }: Opts) {
           .on(RoomEvent.Disconnected, () => {
             if (roomRef.current === room) {
               roomRef.current = null;
-              setRoomId(null);
-              setStatus("idle");
-              bump();
+              resetLocal();
             }
           });
 
         await room.connect(url, token);
+        if (seq !== joinSeq.current) {
+          await room.disconnect();
+          return;
+        }
         setStatus("connected");
         await room.startAudio().catch(() => {});
 
@@ -225,14 +241,15 @@ export function useVoiceRoom({ settings, eco }: Opts) {
         syncRemote();
         bump();
       } catch (e) {
-        roomRef.current?.disconnect();
+        if (seq !== joinSeq.current) return; // ошибка устаревшей попытки, её уже заменила новая
+        void roomRef.current?.disconnect();
         roomRef.current = null;
-        setRoomId(null);
+        resetLocal();
         setStatus("error");
         setError(e instanceof Error ? e.message : "Не удалось подключиться");
       }
     },
-    [leave, audioBps, applyCaps, syncRemote],
+    [leave, resetLocal, audioBps, applyCaps, syncRemote],
   );
 
   useEffect(

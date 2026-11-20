@@ -35,7 +35,7 @@ export function useLobby(me: Profile, mine: Mine) {
   const { room, streaming, muted, deafened, eco } = mine;
   useEffect(() => {
     void channel.current?.track(payload.current);
-  }, [room, streaming, muted, deafened, eco]);
+  }, [me.username, room, streaming, muted, deafened, eco]);
 
   return peers;
 }

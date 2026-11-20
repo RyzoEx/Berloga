@@ -1,7 +1,8 @@
 "use client";
-import { Headphones, HeadphoneOff, MicOff } from "lucide-react";
+import { HeadphoneOff, MicOff } from "lucide-react";
 import { ROOMS } from "@/lib/constants";
 import type { Peer } from "@/lib/types";
+import { Avatar, PersonName } from "./Avatar";
 
 type Props = { peers: Peer[]; current: string | null; connecting: boolean; onJoin: (id: string) => void };
 
@@ -27,7 +28,8 @@ export function RoomList({ peers, current, connecting, onJoin }: Props) {
               <ul className="flex flex-col gap-1 px-4 pb-3">
                 {inRoom.map((p) => (
                   <li key={p.user_id} className="flex items-center gap-2 text-dim">
-                    <span className="truncate">{p.username}</span>
+                    <Avatar id={p.user_id} fallbackName={p.username} size={20} />
+                    <PersonName id={p.user_id} fallback={p.username} />
                     {p.streaming && <span className="label text-live">эфир</span>}
                     {p.eco && <span className="label">eco</span>}
                     <span className="ml-auto flex gap-1 text-faint">
@@ -50,8 +52,8 @@ export function RoomList({ peers, current, connecting, onJoin }: Props) {
           <ul className="flex flex-col gap-1 text-dim">
             {lobby.map((p) => (
               <li key={p.user_id} className="flex items-center gap-2">
-                <Headphones size={12} className="text-faint" />
-                {p.username}
+                <Avatar id={p.user_id} fallbackName={p.username} size={20} />
+                <PersonName id={p.user_id} fallback={p.username} />
               </li>
             ))}
           </ul>

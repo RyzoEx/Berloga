@@ -2,6 +2,8 @@
 import { Gauge, Headphones, HeadphoneOff, LogOut, Mic, MicOff, PhoneOff } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import type { useVoiceRoom } from "@/hooks/useVoiceRoom";
+import { Avatar } from "./Avatar";
+import { useProfilesCtx } from "./ProfilesContext";
 
 type Props = {
   profile: Profile;
@@ -13,16 +15,20 @@ type Props = {
 };
 
 export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut }: Props) {
+  const { openProfile } = useProfilesCtx();
   const inRoom = voice.status === "connected";
   const state = voice.sharing ? "стримит" : inRoom ? "в комнате" : "в сети";
 
   return (
     <div className="flex flex-col gap-3 border-t border-line px-4 py-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-medium">{profile.username}</p>
-          <p className="label">{state}</p>
-        </div>
+        <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => openProfile(profile.id)} title="Мой профиль">
+          <Avatar id={profile.id} size={32} />
+          <span className="min-w-0">
+            <span className="block truncate font-medium">{profile.username}</span>
+            <span className="label block">{state}</span>
+          </span>
+        </button>
         <button className="btn btn-icon" title="Выйти из аккаунта" aria-label="Выйти из аккаунта" onClick={onSignOut}>
           <LogOut size={16} />
         </button>

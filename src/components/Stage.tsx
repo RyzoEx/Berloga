@@ -3,13 +3,14 @@ import { MicOff, Monitor } from "lucide-react";
 import type { useVoiceRoom } from "@/hooks/useVoiceRoom";
 import type { ServerSettings } from "@/lib/types";
 import { StreamTile } from "./StreamTile";
+import { Avatar, PersonName } from "./Avatar";
 
 type Props = { voice: ReturnType<typeof useVoiceRoom>; eco: boolean; settings: ServerSettings };
 
 export function Stage({ voice, eco, settings }: Props) {
   if (voice.status !== "connected") {
     return (
-      <div className="grid flex-1 place-items-center p-6">
+      <div className="grid min-w-0 flex-1 place-items-center p-6">
         <p className="max-w-xs text-center text-dim">
           {voice.status === "connecting" ? "Подключаемся…" : "Выбери комнату слева, чтобы зайти в голосовой канал."}
         </p>
@@ -20,7 +21,7 @@ export function Stage({ voice, eco, settings }: Props) {
   const cols = voice.streams.length > 1 ? "xl:grid-cols-2" : "";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
       {voice.sharing && (
         <p className="flex items-center gap-2 border-b border-line px-4 py-3 text-dim">
           <Monitor size={16} className="text-live" />
@@ -49,13 +50,12 @@ export function Stage({ voice, eco, settings }: Props) {
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span
-                    className={`h-2 w-2 shrink-0 rounded-xs ${p.speaking ? "bg-signal" : "bg-line"}`}
+                    className={`h-6 w-1 shrink-0 ${p.speaking ? "bg-signal" : "bg-line"}`}
                     aria-label={p.speaking ? "говорит" : undefined}
                   />
-                  <span className="truncate font-medium">
-                    {p.name}
-                    {p.isLocal && <span className="text-faint"> (ты)</span>}
-                  </span>
+                  <Avatar id={p.id} fallbackName={p.name} size={24} />
+                  <PersonName id={p.id} fallback={p.name} className="font-medium" />
+                  {p.isLocal && <span className="text-faint">(ты)</span>}
                   {!p.micOn && <MicOff size={14} className="shrink-0 text-faint" aria-label="микрофон выключен" />}
                   {p.sharing && <span className="label text-live">эфир</span>}
                 </div>

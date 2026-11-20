@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { AUDIO_LIMITS, VIDEO_LIMITS, mbPerHour } from "@/lib/constants";
 import type { Peer, ServerSettings } from "@/lib/types";
+import { PersonName } from "./Avatar";
 
 type Props = {
   settings: ServerSettings;
@@ -96,7 +97,7 @@ export function AdminPanel({ settings, update, peers, onClose }: Props) {
             <ul className="flex flex-col">
               {peers.map((p) => (
                 <li key={p.user_id} className="flex items-center justify-between gap-3 border-t border-line py-2">
-                  <span className="min-w-0 truncate">{p.username}</span>
+                  <PersonName id={p.user_id} fallback={p.username} />
                   <button className="btn" aria-pressed={forced.has(p.user_id)} onClick={() => toggleForced(p.user_id)}>
                     {forced.has(p.user_id) ? "Экономия включена" : "Включить"}
                   </button>

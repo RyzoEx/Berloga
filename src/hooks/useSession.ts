@@ -1,39 +1,49 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Profile } from "@/lib/types";
+import { PROFILE_COLUMNS, type Profile } from "@/lib/types";
 
 export function useSession() {
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [uid, setUid] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  const loadProfile = useCallback(async (uid: string | null) => {
-    if (!uid) {
-      setProfile(null);
-      return;
-    }
-    const { data } = await supabase.from("profiles").select("id, username, is_admin").eq("id", uid).single();
-    setProfile(data ?? null);
+  // uid меняется только при смене пользователя: обновление токена раз в час профиль не перезагружает
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUid(data.session?.user.id ?? null);
+      setAuthLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUid(session?.user.id ?? null));
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    let alive = true;
-    supabase.auth.getSession().then(async ({ data }) => {
-      await loadProfile(data.session?.user.id ?? null);
-      if (alive) setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      // вне колбэка: supabase-js блокирует вызовы к себе изнутри слушателя
-      setTimeout(() => loadProfile(session?.user.id ?? null), 0);
-    });
+    if (!uid) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    let active = true; // быстрая смена аккаунта не должна подставить чужой профиль
+    setProfileLoading(true);
+    supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS)
+      .eq("id", uid)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        setProfile((data as Profile | null) ?? null);
+        setProfileLoading(false);
+      });
     return () => {
-      alive = false;
-      sub.subscription.unsubscribe();
+      active = false;
     };
-  }, [loadProfile]);
+  }, [uid]);
 
   const signIn = (email: string, password: string) => supabase.auth.signInWithPassword({ email, password });
   const signOut = () => supabase.auth.signOut();
 
-  return { loading, profile, signIn, signOut };
+  return { loading: authLoading || profileLoading, uid, profile, signIn, signOut };
 }

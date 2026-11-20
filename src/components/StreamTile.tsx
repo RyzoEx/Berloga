@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Maximize, Pause, Play } from "lucide-react";
 import type { RemoteVideoTrack } from "livekit-client";
 import type { StreamQuality, StreamView, useVoiceRoom } from "@/hooks/useVoiceRoom";
+import { useName } from "./ProfilesContext";
 
 type Stats = { w: number; h: number; fps: number; kbps: number };
 
@@ -46,6 +47,7 @@ export function StreamTile({
   voice: ReturnType<typeof useVoiceRoom>;
   eco: boolean;
 }) {
+  const name = useName(stream.participantId, stream.name);
   const ref = useRef<HTMLVideoElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const paused = !!voice.paused[stream.sid];
@@ -75,7 +77,7 @@ export function StreamTile({
         )}
       </div>
       <figcaption className="flex flex-wrap items-center gap-3 border-t border-line px-3 py-2">
-        <span className="font-medium">{stream.name}</span>
+        <span className="font-medium">{name}</span>
         <span className="num text-dim">
           {stats ? `${stats.h}p · ${stats.fps} fps · ${stats.kbps} кбит/с` : "—"}
         </span>
