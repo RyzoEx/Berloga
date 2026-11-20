@@ -1,21 +1,51 @@
-name: Windows installer
+name: Windows installer and auto-update release
+
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+
+permissions:
+  contents: write
+
 jobs:
-  build:
+  release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: src-tauri }
-      - run: npm ci
-      - run: npx tauri build
-      - uses: actions/upload-artifact@v4
         with:
-          name: berloga-windows
-          path: src-tauri/target/release/bundle/nsis/*.exe
+          workspaces: src-tauri
+
+      - name: Check update configuration
+        shell: pwsh
+        run: |
+          $cfg = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          if (-not $cfg.plugins.updater.pubkey -or $cfg.plugins.updater.pubkey -like '*REPLACE*' -or $cfg.plugins.updater.endpoints[0] -like '*REPLACE*') {
+            throw 'Configure GitHub release URL and updater public key first: see AUTO_UPDATE_README.md'
+          }
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "v$($cfg.version)") {
+            throw "Tag must be v$($cfg.version), got ${{ github.ref_name }}"
+          }
+
+      - run: npm ci
+
+      - name: Build and publish signed release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Berloga v__VERSION__
+          releaseBody: "Berloga Windows installer and signed automatic update."
+          releaseDraft: false
+          prerelease: false
+          updaterJsonPreferNsis: true
+          uploadUpdaterJson: true
