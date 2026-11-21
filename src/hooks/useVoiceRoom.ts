@@ -51,6 +51,7 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
 
   const [status, setStatus] = useState<Status>("idle");
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [connectedRoomId, setConnectedRoomId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [micError, setMicError] = useState(false);
   const [deafened, setDeafened] = useState(false);
@@ -77,20 +78,21 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
     const l = latest.current;
     for (const p of room.remoteParticipants.values()) {
       const vol = l.deafened ? 0 : (l.volumes[p.identity] ?? 1);
-      p.setVolume(vol, Track.Source.Microphone);
-      p.setVolume(vol, Track.Source.ScreenShareAudio);
       const screen = p.getTrackPublication(Track.Source.ScreenShare);
       const watching = !l.manualStreams || (screen !== undefined && !!l.watched[screen.trackSid]);
+      const screenPaused = !l.manualStreams && screen !== undefined && !!l.paused[screen.trackSid];
+      const listenToScreen = watching && !screenPaused;
+      p.setVolume(vol, Track.Source.Microphone);
+      p.setVolume(listenToScreen ? vol : 0, Track.Source.ScreenShareAudio);
       for (const pub of p.trackPublications.values()) {
         const isScreen = pub.source === Track.Source.ScreenShare;
-        const isScreenAudio = pub.source === Track.Source.ScreenShareAudio;
-        const subscribe = !(isScreen || isScreenAudio) || watching;
+        const subscribe = isScreen ? watching : pub.source !== Track.Source.ScreenShareAudio || listenToScreen;
         if (pub.isDesired !== subscribe) pub.setSubscribed(subscribe);
         if (subscribe && isScreen) {
           const q = l.eco ? "low" : (l.qualities[pub.trackSid] ?? l.streamQuality);
           pub.setVideoQuality(QUALITY[q]);
           pub.setVideoFPS(l.eco ? 15 : 0);
-          pub.setEnabled(!(l.paused[pub.trackSid] || l.hidden));
+          pub.setEnabled(!l.hidden && !screenPaused);
         }
       }
     }
@@ -126,6 +128,11 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
   }, [eco, qualities, paused, watched, hidden, volumes, deafened, manualStreams, streamQuality, syncRemote]);
 
   useEffect(() => {
+    if (manualStreams) setPaused({});
+    else setWatched({});
+  }, [manualStreams]);
+
+  useEffect(() => {
     applyCaps();
   }, [applyCaps, settings.max_video_bitrate]);
 
@@ -141,6 +148,7 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
   const resetLocal = useCallback(() => {
     baseVideoBps.current = [];
     setRoomId(null);
+    setConnectedRoomId(null);
     setStatus("idle");
     setDeafened(false);
     setPaused({});
@@ -243,6 +251,7 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
           return;
         }
         syncAndRefresh();
+        setConnectedRoomId(id);
         setStatus("connected");
         await room.startAudio().catch(() => {});
 
@@ -381,6 +390,7 @@ export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Op
   return {
     status,
     roomId,
+    connectedRoomId,
     roomName: roomId ? livekitRoomName(roomId) : null,
     error,
     micError,

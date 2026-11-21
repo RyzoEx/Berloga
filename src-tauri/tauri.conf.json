@@ -1,16 +1,20 @@
 {
     "$schema":  "https://schema.tauri.app/config/2",
     "productName":  "Berloga",
-    "version":  "0.1.1",
+    "version":  "0.1.2",
     "identifier":  "app.berloga.desktop",
     "build":  {
                   "frontendDist":  "../shell"
               },
     "app":  {
+                "withGlobalTauri": true,
                 "windows":  [
                                 {
                                     "label":  "main",
                                     "title":  "Berloga",
+                                    "decorations": false,
+                                    "transparent": true,
+                                    "shadow": false,
                                     "url":  "https://berlogaproject.vercel.app/",
                                     "width":  1180,
                                     "height":  760,

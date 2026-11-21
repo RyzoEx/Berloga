@@ -1,4 +1,5 @@
-import type { ChatMessage } from "./types";
+import type { ChatMessage, Peer } from "./types";
+import type { PersonView } from "../hooks/useVoiceRoom";
 
 const ts = (m: ChatMessage) => Date.parse(m.created_at);
 
@@ -30,24 +31,47 @@ export function reconcileLatest(prev: ChatMessage[], fetched: ChatMessage[], pag
 }
 
 // ---------- присутствие ----------
-import type { Peer } from "./types";
-
 /** То, что клиент публикует по сети: состояние + id соединения + время последнего изменения состояния. */
 export type WirePeer = Peer & { conn?: string; ts?: number };
 
 /**
  * Список «кто где» для экрана.
  * Свою строку берём из локального состояния: она не может отстать от того, что ты только что нажал.
- * Чужие: если у человека несколько соединений (вкладка, окно в трее, не успевший закрыться «призрак»),
- * побеждает то, где состояние менялось позже.
+ * Если у человека несколько соединений, запись из голосовой комнаты важнее записи
+ * из лобби. При равном статусе берём запись с более свежим состоянием.
  */
 export function resolvePeers(wire: WirePeer[], me: Peer): Peer[] {
   const best = new Map<string, WirePeer>();
   for (const p of wire) {
     if (!p.user_id || p.user_id === me.user_id) continue;
     const cur = best.get(p.user_id);
-    if (!cur || (p.ts ?? 0) >= (cur.ts ?? 0)) best.set(p.user_id, p);
+    if (!cur || (p.room !== null && cur.room === null) || (
+      (p.room === null) === (cur.room === null) && (p.ts ?? 0) >= (cur.ts ?? 0)
+    )) best.set(p.user_id, p);
   }
   const others = [...best.values()].map(({ conn: _c, ts: _t, ...peer }) => peer as Peer);
   return [me, ...others];
+}
+
+/** LiveKit знает фактический состав комнаты даже при пропуске обновления Presence. */
+export function reconcileVoicePeers(peers: Peer[], people: PersonView[], room: string): Peer[] {
+  const connected = new Set(people.map((person) => person.id));
+  const byId = new Map(peers.map((peer) => [
+    peer.user_id,
+    peer.room === room && !connected.has(peer.user_id) ? { ...peer, room: null, streaming: false } : peer,
+  ]));
+  for (const person of people) {
+    if (person.isLocal) continue;
+    const lobby = byId.get(person.id);
+    byId.set(person.id, {
+      user_id: person.id,
+      username: lobby?.username ?? person.name,
+      room,
+      streaming: person.sharing,
+      muted: !person.micOn,
+      deafened: lobby?.deafened ?? false,
+      eco: lobby?.eco ?? false,
+    });
+  }
+  return [...byId.values()];
 }

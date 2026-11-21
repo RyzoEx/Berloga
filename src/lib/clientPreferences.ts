@@ -11,7 +11,7 @@ export const PREFERENCES_KEY = "berloga.client-preferences.v1";
 
 export const DEFAULT_PREFERENCES = {
   interfaceMode: "legacy" as InterfaceMode,
-  manualStreams: false,
+  manualStreams: true,
   streamQuality: "high" as StreamQuality,
   manualAttachments: false,
   blockRemoteWallpaper: false,
@@ -25,7 +25,7 @@ export function readClientPreferences(): ClientPreferences {
     const saved = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? "{}") as Partial<ClientPreferences>;
     return {
       interfaceMode: saved.interfaceMode === "modern" ? "modern" : "legacy",
-      manualStreams: saved.manualStreams === true,
+      manualStreams: typeof saved.manualStreams === "boolean" ? saved.manualStreams : DEFAULT_PREFERENCES.manualStreams,
       streamQuality: saved.streamQuality === "low" || saved.streamQuality === "medium" ? saved.streamQuality : "high",
       manualAttachments: saved.manualAttachments === true,
       blockRemoteWallpaper: saved.blockRemoteWallpaper === true,

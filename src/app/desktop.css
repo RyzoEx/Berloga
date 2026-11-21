@@ -1,0 +1,71 @@
+.desktop-frame,
+.desktop-content { display: contents; }
+
+html:has(.desktop-frame[data-native-frame="true"]),
+html:has(.desktop-frame[data-native-frame="true"]) body {
+  background: transparent !important;
+}
+
+.desktop-frame[data-native-frame="true"] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 15px;
+  background: var(--color-ground);
+}
+
+.desktop-frame[data-native-frame="true"] .desktop-content {
+  display: block;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.desktop-frame[data-native-frame="true"]:has(.theme-shell[data-interface="modern"]),
+.desktop-frame[data-native-frame="true"] .theme-shell[data-interface="modern"] {
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.desktop-frame[data-native-frame="true"] .theme-shell[data-interface="modern"][data-effects="on"] {
+  --modern-glass: color-mix(in srgb, var(--modern-fill) 88%, transparent);
+}
+
+.desktop-titlebar {
+  display: flex;
+  flex: none;
+  min-height: 32px;
+  background: var(--color-panel);
+  color: var(--color-dim);
+  font: 600 12px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+}
+
+.desktop-drag-region {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding-inline: 14px;
+}
+
+.desktop-drag-region span { pointer-events: none; }
+.desktop-window-buttons { display: flex; }
+
+.desktop-window-buttons button {
+  display: grid;
+  width: 40px;
+  place-items: center;
+  cursor: pointer;
+}
+
+.desktop-window-buttons button:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.desktop-window-buttons button:last-child:hover {
+  background: var(--color-live);
+  color: var(--color-ground);
+}

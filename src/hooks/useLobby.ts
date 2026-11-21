@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { resolvePeers, type WirePeer } from "@/lib/sync";
 import type { Peer, Profile } from "@/lib/types";
@@ -12,8 +11,9 @@ const RESYNC_MS = 30_000;
 /** Кто в сети и в какой комнате: Supabase Presence. Своё состояние всегда берётся локально. */
 export function useLobby(me: Profile, mine: Mine) {
   const [wire, setWire] = useState<WirePeer[]>([]);
+  const [presenceReady, setPresenceReady] = useState(false);
   const [conn] = useState(() => crypto.randomUUID()); // у каждой вкладки и окна своя запись
-  const channel = useRef<RealtimeChannel | null>(null);
+  const send = useRef<() => void>(() => {});
 
   // время последнего изменения состояния: по нему выбирается актуальная запись, если соединений несколько
   const stamp = useRef(Date.now());
@@ -26,28 +26,60 @@ export function useLobby(me: Profile, mine: Mine) {
   const payload = useRef<WirePeer>({ user_id: me.id, username: me.username, ...mine, conn, ts: stamp.current });
   payload.current = { user_id: me.id, username: me.username, ...mine, conn, ts: stamp.current };
 
-  /** track с повтором: единичная потерянная отправка не должна навсегда оставить чужой экран в старом состоянии. */
-  const send = useRef(async (attempt = 0) => {
-    const ch = channel.current;
-    if (!ch) return;
-    const res = await ch.track(payload.current);
-    if (res !== "ok" && attempt < 3) setTimeout(() => void send.current(attempt + 1), 1500 * (attempt + 1));
-  });
-
   useEffect(() => {
-    const ch = supabase.channel("berloga:lobby", { config: { presence: { key: conn } } });
+    const ch = supabase.channel("berloga:lobby", { config: { presence: { enabled: true, key: conn } } });
+    let active = true;
+    let sending = false;
+    let queued = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+
+    const publish = async () => {
+      if (!active || ch.state !== "joined") return;
+      if (sending) {
+        queued = true;
+        return;
+      }
+      clearTimeout(retry);
+      sending = true;
+      const result = await ch.track(payload.current).catch(() => "error");
+      sending = false;
+      if (!active) return;
+      if (result === "ok") {
+        failures = 0;
+        if (queued) {
+          queued = false;
+          void publish();
+        }
+      } else {
+        queued = false;
+        failures = Math.min(failures + 1, 5);
+        retry = setTimeout(() => void publish(), 1000 * 2 ** (failures - 1));
+      }
+    };
+    send.current = () => void publish();
+
     ch.on("presence", { event: "sync" }, () => {
-      const state = ch.presenceState<WirePeer>();
-      setWire(Object.values(state).flat());
+      if (!active) return;
+      setWire(Object.values(ch.presenceState<WirePeer>()).flat());
+      setPresenceReady(true);
     }).subscribe((status) => {
-      if (status === "SUBSCRIBED") void send.current();
+      if (!active) return;
+      if (status === "SUBSCRIBED") void publish();
+      else setPresenceReady(false);
     });
-    channel.current = ch;
-    // периодическая сверка лечит любые потерянные обновления без участия пользователя
-    const timer = setInterval(() => void send.current(), RESYNC_MS);
+    const timer = setInterval(() => void publish(), RESYNC_MS);
+    const resume = () => {
+      if (!document.hidden) void publish();
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
     return () => {
+      active = false;
+      clearTimeout(retry);
       clearInterval(timer);
-      channel.current = null;
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
       void supabase.removeChannel(ch);
     };
   }, [conn]);
@@ -61,5 +93,6 @@ export function useLobby(me: Profile, mine: Mine) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [me.id, key],
   );
-  return useMemo(() => resolvePeers(wire, self), [wire, self]);
+  const peers = useMemo(() => resolvePeers(wire, self), [wire, self]);
+  return { peers, presenceReady };
 }

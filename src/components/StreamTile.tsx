@@ -57,7 +57,7 @@ export function StreamTile({
   const name = useName(stream.participantId, stream.name);
   const ref = useRef<HTMLVideoElement>(null);
   const box = useRef<HTMLDivElement>(null);
-  const paused = !!voice.paused[stream.sid];
+  const paused = !voice.manualStreams && !!voice.paused[stream.sid];
   const running = stream.watching && !paused && !voice.hidden;
   const stats = useStats(stream.track, running);
 
@@ -116,7 +116,7 @@ export function StreamTile({
         <video ref={ref} className="h-full w-full object-contain" autoPlay playsInline muted />
         {(paused || !stream.track) && (
           <p role="status" className="absolute inset-0 grid place-items-center text-dim">
-            {paused ? "Пауза: видео не загружается" : "Ждём видео…"}
+            {paused ? "Демонстрация на паузе" : "Ждём видео…"}
           </p>
         )}
       </div>
@@ -140,7 +140,7 @@ export function StreamTile({
             </button>
           ) : <button
             className="btn btn-icon h-8"
-            title={paused ? "Продолжить" : "Пауза (трафик не расходуется)"}
+            title={paused ? "Продолжить" : "Пауза видео и звука демонстрации"}
             aria-label={paused ? "Продолжить" : "Пауза"}
             onClick={() => voice.togglePause(stream.sid)}
           >

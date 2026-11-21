@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-window-controls",
+  "description": "Управление главным окном из интерфейса Берлоги",
+  "windows": ["main"],
+  "platforms": ["windows"],
+  "local": false,
+  "remote": { "urls": ["https://berlogaproject.vercel.app/*"] },
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-close"
+  ]
+}

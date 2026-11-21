@@ -4,9 +4,9 @@ import { ROOMS } from "@/lib/constants";
 import type { Peer } from "@/lib/types";
 import { Avatar, PersonName } from "./Avatar";
 
-type Props = { peers: Peer[]; current: string | null; connecting: boolean; onJoin: (id: string) => void };
+type Props = { peers: Peer[]; presenceReady: boolean; current: string | null; connecting: boolean; onJoin: (id: string) => void };
 
-export function RoomList({ peers, current, connecting, onJoin }: Props) {
+export function RoomList({ peers, presenceReady, current, connecting, onJoin }: Props) {
   const lobby = peers.filter((p) => !p.room);
 
   return (
@@ -51,7 +51,7 @@ export function RoomList({ peers, current, connecting, onJoin }: Props) {
       <section className="px-4 py-3">
         <p className="label mb-2">В сети, вне комнат</p>
         {lobby.length === 0 ? (
-          <p className="text-faint">Никого</p>
+          <p className="text-faint">{presenceReady ? "Никого" : "Список обновляется…"}</p>
         ) : (
           <ul className="flex flex-col gap-1 text-dim">
             {lobby.map((p) => (

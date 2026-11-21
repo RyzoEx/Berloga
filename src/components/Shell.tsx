@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Gauge, MessageSquare, MonitorUp, MonitorOff, Radio, SlidersHorizontal } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { ROOMS } from "@/lib/constants";
+import { reconcileVoicePeers } from "@/lib/sync";
 import { useServerSettings } from "@/hooks/useServerSettings";
 import { useVoiceRoom } from "@/hooks/useVoiceRoom";
 import { useLobby } from "@/hooks/useLobby";
@@ -73,13 +74,16 @@ export function Shell({ profile: sessionProfile, onSignOut, preferences, onPrefe
   const forcedEco = settings.forced_eco_users.includes(profile.id);
   const eco = forcedEco || ecoLocal;
   const voice = useVoiceRoom({ settings, eco, manualStreams: preferences.manualStreams, streamQuality: preferences.streamQuality });
-  const peers = useLobby(profile, {
-    room: voice.roomId,
+  const lobby = useLobby(profile, {
+    room: voice.connectedRoomId,
     streaming: voice.sharing,
     muted: voice.status === "connected" && !voice.micOn,
     deafened: voice.deafened,
     eco,
   });
+  const peers = voice.status === "connected" && voice.connectedRoomId
+    ? reconcileVoicePeers(lobby.peers, voice.people, voice.connectedRoomId)
+    : lobby.peers;
 
   const room = ROOMS.find((r) => r.id === voice.roomId);
 
@@ -108,7 +112,7 @@ export function Shell({ profile: sessionProfile, onSignOut, preferences, onPrefe
           <span className="font-display text-sm font-semibold tracking-tight">БЕРЛОГА</span>
           <InterfaceModeControl mode={preferences.interfaceMode} onMode={(interfaceMode) => onPreferences({ interfaceMode })} />
         </div>
-        <RoomList peers={peers} current={voice.roomId} connecting={voice.status === "connecting"} onJoin={voice.join} />
+        <RoomList peers={peers} presenceReady={lobby.presenceReady} current={voice.roomId} connecting={voice.status === "connecting"} onJoin={voice.join} />
         <SelfPanel profile={profile} voice={voice} eco={eco} forcedEco={forcedEco} onEco={setEco} onSignOut={onSignOut} onSettings={() => setSettingsOpen(true)} />
       </aside>
 
