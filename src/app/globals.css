@@ -99,7 +99,7 @@ body {
   color: var(--color-signal-ink);
 }
 .btn-signal:hover:not(:disabled) {
-  background: #f5b13f;
+  background: color-mix(in srgb, var(--color-signal) 87%, var(--color-signal-ink));
 }
 .btn-live[aria-pressed="true"] {
   border-color: var(--color-live);
@@ -168,7 +168,7 @@ input[type="range"]:disabled {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: rgba(0,0,0,var(--theme-dim, 0));
 }
-html[data-theme-glass="true"] .theme-shell :is(aside, header, .bg-panel, .bg-raised, .bg-ground, .btn, .field) {
+html[data-theme-glass="true"] .theme-shell:not([data-interface="modern"]) :is(aside, header, .bg-panel, .bg-raised, .bg-ground, .btn, .field) {
   backdrop-filter: blur(var(--theme-blur, 0px));
   -webkit-backdrop-filter: blur(var(--theme-blur, 0px));
 }
@@ -185,3 +185,42 @@ html[data-theme-motion="drift"] .theme-shell::before { animation: wallpaper-drif
 .theme-swatch { width: 100%; height: 36px; border: 1px solid var(--color-line); border-radius: var(--radius-sm); cursor: pointer; }
 .theme-settings input[type="color"] { height: 34px; width: 40px; padding: 0; background: transparent; cursor: pointer; border: 0; }
 .theme-settings select { color-scheme: dark; }
+html:is([data-client-theme="arctic"], [data-client-theme="paper"]) .theme-settings select { color-scheme: light; }
+.field.field-compact { width: auto; }
+.room-stage { container: voice-room / inline-size; }
+@container voice-room (min-width: 740px) {
+  .room-stream-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.preference-switch {
+  appearance: none;
+  cursor: pointer;
+  flex: none;
+  display: grid;
+  align-items: center;
+  width: 36px;
+  height: 20px;
+  padding: 3px;
+  border: 1px solid var(--color-dim);
+  border-radius: 10px;
+  background: var(--color-ground);
+}
+.preference-switch::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-dim);
+}
+.preference-switch:checked {
+  border-color: var(--color-signal);
+  background: var(--color-signal);
+}
+.preference-switch:checked::before {
+  justify-self: end;
+  background: var(--color-signal-ink);
+}
+@media (forced-colors: active) {
+  .preference-switch { appearance: auto; display: revert; }
+  .preference-switch::before { content: none; }
+}

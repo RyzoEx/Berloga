@@ -21,7 +21,7 @@ export function SelfPanel({ profile, voice, eco, forcedEco, onEco, onSignOut, on
   const state = voice.sharing ? "стримит" : inRoom ? "в комнате" : "в сети";
 
   return (
-    <div className="flex flex-col gap-3 border-t border-line px-4 py-3">
+    <div className="shell-self flex flex-col gap-3 border-t border-line px-4 py-3">
       <div className="flex items-center justify-between gap-2">
         <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => openProfile(profile.id)} title="Мой профиль">
           <Avatar id={profile.id} size={32} />

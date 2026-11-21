@@ -1,10 +1,21 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useSession } from "@/hooks/useSession";
 import { LoginScreen } from "@/components/LoginScreen";
 import { Shell } from "@/components/Shell";
+import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readClientPreferences, type ClientPreferences } from "@/lib/clientPreferences";
 
 export default function Page() {
   const { loading, uid, profile, signIn, signOut } = useSession();
+  const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+
+  useEffect(() => setPreferences(readClientPreferences()), []);
+
+  const updatePreferences = (patch: Partial<ClientPreferences>) => {
+    const next = { ...preferences, ...patch };
+    setPreferences(next);
+    try { localStorage.setItem(PREFERENCES_KEY, JSON.stringify(next)); } catch {}
+  };
 
   if (loading) return <div className="grid h-full place-items-center label">Загрузка</div>;
 
@@ -25,6 +36,8 @@ export default function Page() {
   if (!profile) {
     return (
       <LoginScreen
+        preferences={preferences}
+        onMode={(interfaceMode) => updatePreferences({ interfaceMode })}
         onSubmit={async (email, password) => {
           const { error } = await signIn(email, password);
           return error ? "Неверная почта или пароль" : null;
@@ -32,5 +45,5 @@ export default function Page() {
       />
     );
   }
-  return <Shell profile={profile} onSignOut={signOut} />;
+  return <Shell profile={profile} onSignOut={signOut} preferences={preferences} onPreferences={updatePreferences} />;
 }

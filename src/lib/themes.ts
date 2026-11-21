@@ -1,3 +1,5 @@
+import type { ClientPreferences } from "./clientPreferences";
+
 /** Local-only UI themes. No server/profile changes. */
 export type ClientTheme = {
   id: string; name: string; ground: string; panel: string; raised: string; line: string;
@@ -21,6 +23,8 @@ export const BUILT_INS: ClientTheme[] = [
   { ...DEFAULT, id: "crimson", name: "Crimson Night", ground: "#130d13", panel: "#25121b", raised: "#381d29", line: "#643443", text: "#fff0f1", dim: "#d3aeb6", faint: "#a77d89", accent: "#ff6679", accentInk: "#25070e", opacity: 88, blur: 7, radius: 5 },
   { ...DEFAULT, id: "forest", name: "Deep Forest", ground: "#0c1714", panel: "#14251e", raised: "#20382e", line: "#375949", text: "#e4f4e9", dim: "#a6c5b2", faint: "#769b87", accent: "#8ae0a6", accentInk: "#0a2618", opacity: 93, blur: 4, radius: 4 },
   { ...DEFAULT, id: "paper", name: "Soft Paper", ground: "#f2ede3", panel: "#fffaf1", raised: "#e9e1d6", line: "#d4c7b9", text: "#302922", dim: "#675c52", faint: "#80756c", accent: "#9a562a", accentInk: "#ffffff", live: "#c13a32", ok: "#367957", opacity: 100, radius: 5 },
+  { ...DEFAULT, id: "night-shift", name: "Ночная смена", ground: "#0d0e0d", panel: "#161814", raised: "#20221c", line: "#373a30", text: "#f0eadc", dim: "#b9b39f", faint: "#92917f", accent: "#f2b95e", accentInk: "#221709", live: "#fa806c", ok: "#a8c27e" },
+  { ...DEFAULT, id: "arctic", name: "Арктика", ground: "#e8eff2", panel: "#f8fcfd", raised: "#dfeaf0", line: "#aac0ce", text: "#192a35", dim: "#405866", faint: "#4e6574", accent: "#185e85", accentInk: "#ffffff", live: "#a52d38", ok: "#23644d", radius: 4 },
 ];
 const HEX = /^#[0-9a-fA-F]{6}$/;
 export function validateTheme(raw: unknown): ClientTheme | null {
@@ -52,11 +56,12 @@ function rgba(hex: string, opacity: number) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${opacity / 100})`;
 }
-export function applyTheme(t: ClientTheme) {
+export function applyTheme(t: ClientTheme, { blockRemoteWallpaper, reduceThemeEffects }: ClientPreferences) {
   const root = document.documentElement;
   const glass = t.opacity < 100;
+  const bg = blockRemoteWallpaper && /^https:\/\//i.test(t.background) ? "" : t.background;
   root.dataset.clientTheme = t.id;
-  root.dataset.themeGlass = glass ? "true" : "false";
+  root.dataset.themeGlass = glass && !reduceThemeEffects && t.blur > 0 ? "true" : "false";
   const vars: Record<string, string> = {
     "--color-ground": rgba(t.ground, glass ? Math.min(t.opacity + 12, 100) : 100),
     "--color-panel": rgba(t.panel, t.opacity), "--color-raised": rgba(t.raised, Math.min(t.opacity + 13, 100)),
@@ -65,14 +70,13 @@ export function applyTheme(t: ClientTheme) {
     "--color-signal": t.accent, "--color-signal-ink": t.accentInk,
     "--color-live": t.live, "--color-ok": t.ok,
     "--radius-xs": `${t.radius}px`, "--radius-sm": `${Math.min(28, t.radius + 2)}px`,
-    "--theme-blur": `${glass ? t.blur : 0}px`, "--theme-dim": String(t.background ? t.backgroundDim / 100 : 0),
+    "--theme-blur": `${glass ? t.blur : 0}px`, "--theme-dim": String(bg ? t.backgroundDim / 100 : 0),
     "--theme-bg-size": t.imageFit, "--font-sans": t.font === "mono" ? '"JetBrains Mono Variable", monospace' : t.font === "unbounded" ? '"Unbounded Variable", sans-serif' : '"Onest Variable", sans-serif',
   };
   for (const [k, value] of Object.entries(vars)) root.style.setProperty(k, value);
-  const bg = t.background;
   const safeImage = /^https:\/\//i.test(bg) || /^data:image\//i.test(bg);
   root.style.setProperty("--theme-wallpaper", bg ? safeImage ? `url("${bg.replaceAll('"', '%22')}")` : /^linear-gradient\([#\w\s\d%,.()]+\)$/i.test(bg) ? bg : "none" : "none");
-  root.dataset.themeMotion = t.motion;
+  root.dataset.themeMotion = !bg || reduceThemeEffects ? "off" : t.motion;
   root.dataset.themeWallpaper = bg ? "true" : "false";
   root.style.backgroundColor = t.ground;
   document.body.style.backgroundColor = t.ground;

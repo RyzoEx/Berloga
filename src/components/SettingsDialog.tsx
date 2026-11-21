@@ -1,10 +1,24 @@
 "use client";
 import { useRef, useState } from "react";
-import { Check, Download, ImagePlus, LayoutGrid, List, RotateCcw, Save, Trash2, Upload, X } from "lucide-react";
+import { Check, Download, Image as ImageIcon, ImagePlus, LayoutGrid, List, Monitor, Paperclip, RotateCcw, Save, Trash2, Upload, X } from "lucide-react";
 import { BUILT_INS, CUSTOM_KEY, DEFAULT, readCustomThemes, validateTheme, type ClientTheme } from "@/lib/themes";
+import { QUALITY_LABELS, type ClientPreferences, type StreamQuality } from "@/lib/clientPreferences";
 
 export type RoomView = "list" | "tiles";
-type Props = { view: RoomView; onView: (v: RoomView) => void; theme: ClientTheme; onTheme: (v: ClientTheme) => void; onClose: () => void };
+type Props = {
+  view: RoomView;
+  onView: (v: RoomView) => void;
+  theme: ClientTheme;
+  onTheme: (v: ClientTheme) => void;
+  preferences: ClientPreferences;
+  onPreferences: (patch: Partial<ClientPreferences>) => void;
+  onClose: () => void;
+};
+const TABS = [
+  { id: "themes", label: "Оформление" },
+  { id: "room", label: "Вид комнаты" },
+  { id: "traffic", label: "Трафик" },
+] as const;
 const HEX_KEYS = [
   ["ground", "Основа"], ["panel", "Панели"], ["raised", "Элементы"], ["line", "Рамки"],
   ["text", "Основной текст"], ["dim", "Вторичный текст"], ["faint", "Подписи"],
@@ -12,8 +26,8 @@ const HEX_KEYS = [
 ] as const;
 const MAX_WALLPAPER = 2_200_000; // localStorage quota; compressed still images, animated GIF kept intact
 
-export function SettingsDialog({ view, onView, theme, onTheme, onClose }: Props) {
-  const [tab, setTab] = useState<"themes" | "room">("themes");
+export function SettingsDialog({ view, onView, theme, onTheme, preferences, onPreferences, onClose }: Props) {
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("themes");
   const [saved, setSaved] = useState<ClientTheme[]>(readCustomThemes);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -83,29 +97,122 @@ export function SettingsDialog({ view, onView, theme, onTheme, onClose }: Props)
     <div className="fixed inset-0 z-20 grid place-items-center p-3" style={{ background: "rgba(0,0,0,.78)" }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Настройки клиента" className="theme-settings flex max-h-[min(90vh,800px)] w-full max-w-[760px] flex-col overflow-hidden border border-line bg-panel shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
-          <div><h3 className="text-base font-semibold">Настройки клиента</h3><p className="text-xs text-dim">Внешний вид сохраняется только на этом устройстве</p></div>
+          <h3 className="text-base font-semibold">Настройки клиента</h3>
           <button className="btn btn-icon" onClick={onClose} aria-label="Закрыть"><X size={16} /></button>
         </div>
-        <div className="flex shrink-0 gap-2 border-b border-line px-5 pt-3">
-          <button className={`btn mb-3 ${tab === "themes" ? "border-signal text-signal" : ""}`} onClick={() => setTab("themes")}>Оформление</button>
-          <button className={`btn mb-3 ${tab === "room" ? "border-signal text-signal" : ""}`} onClick={() => setTab("room")}>Вид комнаты</button>
-        </div>
-        <div className="theme-settings-scroll min-h-0 flex-1 overflow-y-auto p-5">
-          {tab === "room" ? (
-            <div role="radiogroup" className="space-y-2">{options.map((o) => <label key={o.id} className={`flex cursor-pointer items-start gap-3 border border-line p-3 ${view === o.id ? "bg-raised" : ""}`}>
-              <input type="radio" name="view" className="mt-1 accent-signal" checked={view === o.id} onChange={() => onView(o.id)} />
-              <span><span className="flex items-center gap-2 font-medium"><o.icon size={16} /> {o.label}</span><span className="text-sm text-dim">{o.hint}</span></span>
-            </label>)}</div>
+        <nav aria-label="Разделы настроек" className="flex shrink-0 flex-wrap gap-2 border-b border-line px-5 py-3">
+          {TABS.map(({ id, label }) => (
+            <button key={id} className="btn" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </nav>
+        <div key={tab} className="theme-settings-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+          {tab === "traffic" ? (
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+              <section className="overflow-hidden rounded-sm border border-line bg-raised sm:row-span-2">
+                <h4 className="flex items-center gap-2 border-b border-line px-4 py-3 text-base font-semibold">
+                  <Monitor size={17} className="text-signal" aria-hidden="true" /> Демонстрации экрана
+                </h4>
+                <div className="divide-y divide-line">
+                  <PreferenceToggle
+                    label="Открывать демонстрации по нажатию"
+                    hint="Видео и звук экрана загружаются после кнопки «Смотреть». Микрофоны в комнате слышны сразу."
+                    checked={preferences.manualStreams}
+                    onChange={(manualStreams) => onPreferences({ manualStreams })}
+                  />
+                  <label className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+                    <span>
+                      <span className="block text-sm font-medium">Качество по умолчанию</span>
+                      <span className="block text-xs text-dim">Кнопка «Экономия» ограничивает качество до низкого.</span>
+                    </span>
+                    <select className="field field-compact" value={preferences.streamQuality} onChange={(e) => onPreferences({ streamQuality: e.target.value as StreamQuality })}>
+                      {(Object.keys(QUALITY_LABELS) as StreamQuality[]).map((quality) => (
+                        <option key={quality} value={quality}>{QUALITY_LABELS[quality]}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </section>
+              <section className="overflow-hidden rounded-sm border border-line">
+                <h4 className="flex items-center gap-2 px-4 pt-3 text-sm font-semibold">
+                  <Paperclip size={15} className="text-dim" aria-hidden="true" /> Вложения в чате
+                </h4>
+                <PreferenceToggle
+                  label="Загружать вложения только по нажатию"
+                  hint="Имя и размер видны сразу. В режиме «Экономия» вложения всегда открываются вручную."
+                  checked={preferences.manualAttachments}
+                  onChange={(manualAttachments) => onPreferences({ manualAttachments })}
+                />
+              </section>
+              <section className="overflow-hidden rounded-sm border border-line">
+                <h4 className="flex items-center gap-2 px-4 pt-3 text-sm font-semibold">
+                  <ImageIcon size={15} className="text-dim" aria-hidden="true" /> Обои
+                </h4>
+                <PreferenceToggle
+                  label="Не загружать обои из интернета"
+                  hint="Темы с обоями по ссылке покажут цвет фона. Обои из файла по-прежнему доступны."
+                  checked={preferences.blockRemoteWallpaper}
+                  onChange={(blockRemoteWallpaper) => onPreferences({ blockRemoteWallpaper })}
+                />
+              </section>
+            </div>
+          ) : tab === "room" ? (
+            <div role="radiogroup" aria-label="Вид комнаты" className="grid gap-3 sm:grid-cols-2">
+              {options.map(({ id, label, hint, icon: Icon }) => (
+                <label key={id} className="flex cursor-pointer items-start gap-3 rounded-sm border border-line p-4 hover:bg-raised has-checked:border-signal has-checked:bg-raised">
+                  <Icon size={18} className="mt-0.5 shrink-0 text-signal" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{label}</span>
+                    <span className="block text-sm text-dim">{hint}</span>
+                  </span>
+                  <input type="radio" name="view" className="mt-1 size-4 shrink-0 accent-signal" checked={view === id} onChange={() => onView(id)} />
+                </label>
+              ))}
+            </div>
           ) : <div className="flex flex-col gap-6">
             <section>
               <p className="label mb-3">Готовые темы</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{BUILT_INS.map((t) => <button key={t.id} onClick={() => { onTheme(t); setError(""); }} className={`relative flex flex-col overflow-hidden border text-left ${theme.id === t.id ? "border-signal" : "border-line"}`} aria-pressed={theme.id === t.id}>
-                <span className="flex h-16 items-center gap-2 px-3" style={{ background: t.background || t.ground, color: t.text }}>
-                  <span className="h-9 w-8 border" style={{ background: t.panel, borderColor: t.line, opacity: t.opacity / 100 }} />
-                  <span className="flex flex-col gap-1"><span className="h-2 w-16 rounded-sm" style={{ background: t.accent }} /><span className="h-1 w-12 rounded-sm" style={{ background: t.dim }} /></span>
-                </span><span className="flex min-h-9 items-center justify-between gap-1 bg-panel px-2 text-xs font-medium">{t.name}{theme.id === t.id && <Check size={14} className="text-signal" />}</span>
-              </button>)}</div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {BUILT_INS.map((preset) => {
+                  const active = theme.id === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => { onTheme(preset); setError(""); }}
+                      className={`group flex min-w-0 flex-col overflow-hidden rounded-sm border text-left hover:border-signal ${active ? "border-signal" : "border-line"} ${preset.id === DEFAULT.id ? "sm:col-span-2" : ""}`}
+                      aria-pressed={active}
+                    >
+                      <span aria-hidden="true" className="grid h-[76px] w-full grid-cols-[minmax(24px,1fr)_minmax(0,3fr)] gap-1.5 p-2.5" style={{ background: preset.background || preset.ground }}>
+                        <span className="flex flex-col gap-1 border p-1.5" style={{ background: preset.panel, borderColor: preset.line, opacity: preset.opacity / 100 }}>
+                          <span className="h-1 w-3/4" style={{ background: preset.accent }} />
+                          <span className="h-1 w-1/2" style={{ background: preset.line }} />
+                          <span className="h-1 w-2/3" style={{ background: preset.line }} />
+                        </span>
+                        <span className="grid grid-rows-[1fr_2fr] gap-1.5">
+                          <span className="flex items-center px-1.5" style={{ background: preset.raised }}>
+                            <span className="h-1 w-1/3" style={{ background: preset.text }} />
+                          </span>
+                          <span className="grid grid-cols-[2fr_1fr] gap-1.5">
+                            <span style={{ background: preset.panel }} />
+                            <span style={{ background: preset.raised }} />
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex min-h-9 w-full items-center justify-between gap-1 px-2.5 py-1.5 text-xs font-medium group-hover:bg-raised">
+                        {preset.name}{active && <Check size={14} className="shrink-0 text-signal" aria-hidden="true" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </section>
+            <div className="border border-line bg-raised">
+              <PreferenceToggle
+                label="Уменьшить эффекты оформления"
+                hint="Отключает размытие панелей, движение фона и анимации Modern."
+                checked={preferences.reduceThemeEffects}
+                onChange={(reduceThemeEffects) => onPreferences({ reduceThemeEffects })}
+              />
+            </div>
             {saved.length > 0 && <section><p className="label mb-2">Мои сохранённые пресеты</p><div className="flex flex-wrap gap-2">{saved.map((t) => <span key={t.id} className="inline-flex items-center border border-line"><button className={`px-3 py-2 text-xs ${theme.id === t.id ? "text-signal" : ""}`} onClick={() => onTheme(t)}>{t.name}</button><button className="border-l border-line px-2 py-2 text-dim hover:text-live" aria-label={`Удалить ${t.name}`} onClick={() => remove(t.id)}><Trash2 size={13} /></button></span>)}</div></section>}
             <section className="flex flex-col gap-4">
               <div className="flex items-center justify-between"><p className="label">Редактор темы · изменения видны сразу</p><button className="btn h-7 text-xs" onClick={() => { onTheme(DEFAULT); setError(""); }}><RotateCcw size={13} /> Сбросить</button></div>
@@ -136,9 +243,21 @@ export function SettingsDialog({ view, onView, theme, onTheme, onClose }: Props)
             {error && <p role="alert" className="border border-live p-2 text-sm text-live">{error}</p>}
           </div>}
         </div>
-        <div className="flex shrink-0 justify-between gap-3 border-t border-line px-5 py-3 text-xs text-dim"><span>Тема применяется только к этому клиенту</span><button className="btn" onClick={onClose}>Готово</button></div>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line px-5 py-3 text-xs text-dim"><span>Настройки сохраняются на этом устройстве</span><button className="btn" onClick={onClose}>Готово</button></div>
       </div>
     </div>
+  );
+}
+
+function PreferenceToggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 hover:bg-ground">
+      <span>
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="mt-0.5 block text-xs text-dim">{hint}</span>
+      </span>
+      <input type="checkbox" className="preference-switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
   );
 }
 function Slider({ label, value, min, max, unit, onChange }: { label: string; value: number; min: number; max: number; unit: string; onChange: (v: number) => void }) {

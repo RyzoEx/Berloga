@@ -8,31 +8,28 @@ import type { ChatMessage } from "@/lib/types";
 import { Avatar, PersonName } from "./Avatar";
 import { useProfilesCtx } from "./ProfilesContext";
 
-type Props = { room: string; onRoom: (id: string) => void; eco: boolean };
+type Props = { room: string; onRoom: (id: string) => void; manualAttachments: boolean };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 const GROUP_MS = 5 * 60 * 1000;
 
-function Attachment({ m, eco, onLoad, onZoom }: { m: ChatMessage; eco: boolean; onLoad: () => void; onZoom: (url: string) => void }) {
-  const [wanted, setWanted] = useState(!eco);
+function Attachment({ m, manual, onLoad, onZoom }: { m: ChatMessage; manual: boolean; onLoad: () => void; onZoom: (url: string) => void }) {
+  const [wanted, setWanted] = useState(false);
   const [broken, setBroken] = useState(false);
-  useEffect(() => {
-    if (!eco) setWanted(true);
-  }, [eco]);
 
   if (!m.attachment_path || !m.attachment_kind) return null;
   const url = mediaUrl(CHAT_BUCKET, m.attachment_path);
   const label = `${m.attachment_name ?? "файл"}${m.attachment_size ? ` · ${formatSize(m.attachment_size)}` : ""}`;
 
-  if (broken) return <p className="text-faint">Файл недоступен</p>;
-  if (!wanted) {
+  if (manual && !wanted) {
     return (
       <button className="btn h-auto w-fit py-2" onClick={() => setWanted(true)} title="Экономия трафика: файл не загружается сам">
         <Download size={16} /> Загрузить: {label}
       </button>
     );
   }
+  if (broken) return <p className="text-faint">Файл недоступен</p>;
   if (m.attachment_kind === "video") {
     return (
       <video
@@ -54,7 +51,7 @@ function Attachment({ m, eco, onLoad, onZoom }: { m: ChatMessage; eco: boolean; 
   );
 }
 
-export function ChatPanel({ room, onRoom, eco }: Props) {
+export function ChatPanel({ room, onRoom, manualAttachments }: Props) {
   const { me } = useProfilesCtx();
   const chat = useChat(room, me.id);
   const { messages } = chat;
@@ -136,10 +133,10 @@ export function ChatPanel({ room, onRoom, eco }: Props) {
   };
 
   return (
-    <aside className="flex min-h-0 w-96 shrink-0 flex-col border-l border-line bg-panel" aria-label="Чат">
-      <div className="flex border-b border-line">
+    <aside className="shell-chat flex min-h-0 w-96 shrink-0 flex-col border-l border-line bg-panel" aria-label="Чат">
+      <div className="shell-chat-tabs flex border-b border-line">
         {ROOMS.map((r) => (
-          <button key={r.id} className={`flex-1 px-2 py-3 ${r.id === room ? "bg-raised font-semibold text-signal" : "text-dim hover:bg-raised"}`} onClick={() => onRoom(r.id)}>
+          <button key={r.id} className={`flex-1 px-2 py-3 ${r.id === room ? "bg-raised font-semibold text-signal" : "text-dim hover:bg-raised"}`} aria-pressed={r.id === room} onClick={() => onRoom(r.id)}>
             {r.name}
           </button>
         ))}
@@ -172,8 +169,8 @@ export function ChatPanel({ room, onRoom, eco }: Props) {
                       <span className="num text-faint">{time(m.created_at)}</span>
                     </p>
                   )}
-                  {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-                  <Attachment m={m} eco={eco} onLoad={onMediaLoad} onZoom={setZoom} />
+                  {m.body && <p className="chat-message-body whitespace-pre-wrap break-words" data-mine={mine}>{m.body}</p>}
+                  <Attachment m={m} manual={manualAttachments} onLoad={onMediaLoad} onZoom={setZoom} />
                 </div>
                 {mine && (
                   <div className="shrink-0">

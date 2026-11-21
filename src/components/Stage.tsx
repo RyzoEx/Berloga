@@ -1,5 +1,5 @@
 "use client";
-import { MicOff, Monitor } from "lucide-react";
+import { Headphones, MicOff, Monitor } from "lucide-react";
 import type { useVoiceRoom } from "@/hooks/useVoiceRoom";
 import type { ServerSettings } from "@/lib/types";
 import { StreamTile } from "./StreamTile";
@@ -7,9 +7,10 @@ import { Avatar, PersonName } from "./Avatar";
 import { PROFILE_BUCKET, mediaUrl } from "@/lib/media";
 import { useProfilesCtx } from "./ProfilesContext";
 import type { RoomView } from "./SettingsDialog";
+import type { StreamQuality } from "@/lib/clientPreferences";
 
 type Voice = ReturnType<typeof useVoiceRoom>;
-type Props = { voice: Voice; eco: boolean; settings: ServerSettings; view: RoomView };
+type Props = { voice: Voice; eco: boolean; settings: ServerSettings; view: RoomView; onPreferredQuality: (quality: StreamQuality) => void };
 
 function List({ voice }: { voice: Voice }) {
   return (
@@ -19,7 +20,8 @@ function List({ voice }: { voice: Voice }) {
             return (
               <li
                 key={p.id}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(120px,240px)_48px] items-center gap-4 border-t border-line py-3"
+                className="room-participant-row grid grid-cols-[minmax(0,1fr)_minmax(120px,240px)_48px] items-center gap-4 border-t border-line py-3"
+                data-speaking={p.speaking}
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span
@@ -63,7 +65,7 @@ function Tiles({ voice, compact }: { voice: Voice; compact: boolean }) {
         const vol = voice.volumes[p.id] ?? 1;
         const banner = profiles[p.id]?.banner_path;
         return (
-          <li key={p.id} className={`relative flex flex-col overflow-hidden border-2 bg-raised ${p.speaking ? "border-signal" : "border-line"}`}>
+          <li key={p.id} data-speaking={p.speaking} className={`room-participant-tile relative flex flex-col overflow-hidden border-2 bg-raised ${p.speaking ? "border-signal" : "border-line"}`}>
             <div className={`relative grid place-items-center ${compact ? "h-24" : "h-32"}`}>
               {banner && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -109,21 +111,26 @@ function Tiles({ voice, compact }: { voice: Voice; compact: boolean }) {
   );
 }
 
-export function Stage({ voice, eco, settings, view }: Props) {
+export function Stage({ voice, eco, settings, view, onPreferredQuality }: Props) {
   if (voice.status !== "connected") {
     return (
-      <div className="grid min-w-0 flex-1 place-items-center p-6">
-        <p className="max-w-xs text-center text-dim">
+      <div className="room-empty grid min-w-0 flex-1 place-items-center p-6">
+        <div className="room-empty-content">
+          <span className="modern-empty-icon"><Headphones size={28} aria-hidden="true" /></span>
+          <h2 className="modern-empty-title">{voice.status === "connecting" ? "Вход в комнату" : "Голосовые комнаты"}</h2>
+          <p className="max-w-xs text-center text-dim">
           {voice.status === "connecting" ? "Подключаемся…" : "Выбери комнату слева, чтобы зайти в голосовой канал."}
-        </p>
+          </p>
+        </div>
       </div>
     );
   }
 
-  const cols = voice.streams.length > 1 ? "xl:grid-cols-2" : "";
+  const activeStreams = voice.streams.filter((stream) => stream.watching);
+  const waitingStreams = voice.streams.filter((stream) => !stream.watching);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+    <div className="room-stage flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
       {voice.sharing && (
         <p className="flex items-center gap-2 border-b border-line px-4 py-3 text-dim">
           <Monitor size={16} className="text-live" />
@@ -133,16 +140,18 @@ export function Stage({ voice, eco, settings, view }: Props) {
       )}
 
       {voice.streams.length > 0 && (
-        <div className={`grid gap-4 border-b border-line p-4 ${cols}`}>
-          {voice.streams.map((s) => (
-            <StreamTile key={s.sid} stream={s} voice={voice} eco={eco} />
+        <section aria-label="Демонстрации экрана" className="room-stream-grid grid items-start gap-3 border-b border-line p-4">
+          {[...activeStreams, ...waitingStreams].map((stream) => (
+            <div key={stream.sid} className={stream.watching && activeStreams.length === 1 ? "col-span-full min-w-0" : "min-w-0"}>
+              <StreamTile stream={stream} voice={voice} eco={eco} onPreferredQuality={onPreferredQuality} />
+            </div>
           ))}
-        </div>
+        </section>
       )}
 
-      <section className="p-4">
+      <section className="room-participants p-4">
         <p className="label mb-3">В комнате · {voice.people.length}</p>
-        {view === "tiles" ? <Tiles voice={voice} compact={voice.streams.length > 0} /> : <List voice={voice} />}
+        {view === "tiles" ? <Tiles voice={voice} compact={activeStreams.length > 0} /> : <List voice={voice} />}
       </section>
     </div>
   );

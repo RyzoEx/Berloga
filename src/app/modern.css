@@ -1,0 +1,347 @@
+.interface-mode-control {
+  display: inline-flex;
+  flex: none;
+  width: fit-content;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-ground);
+}
+
+.interface-mode-control button {
+  padding: 4px 7px;
+  border-radius: var(--radius-xs);
+  color: var(--color-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.interface-mode-control button[aria-pressed="true"] {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+.modern-room-icon,
+.modern-empty-icon,
+.modern-empty-title {
+  display: none;
+}
+
+[data-interface="modern"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --radius-xs: 11px;
+  --radius-sm: 15px;
+  --modern-outline: color-mix(in srgb, var(--color-line) 78%, var(--color-dim));
+  --modern-fill: color-mix(in srgb, var(--color-panel) 92%, var(--color-ground));
+  --modern-glass: var(--modern-fill);
+  --modern-tint: color-mix(in srgb, var(--color-signal) 13%, var(--color-raised));
+  --modern-hover: color-mix(in srgb, var(--color-text) 10%, var(--color-raised));
+  --modern-canvas:
+    radial-gradient(ellipse at 5% 5%, color-mix(in srgb, var(--color-signal) 24%, transparent), transparent 52%),
+    radial-gradient(ellipse at 92% 85%, color-mix(in srgb, #6384b4 28%, transparent), transparent 57%);
+  font-family: var(--font-sans);
+}
+
+[data-interface="modern"][data-effects="on"] {
+  --modern-glass: color-mix(in srgb, var(--modern-fill) 70%, transparent);
+}
+
+.theme-shell[data-interface="modern"] {
+  grid-template-columns: 272px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--color-ground);
+}
+
+.theme-shell[data-interface="modern"]::before {
+  background-image: var(--theme-wallpaper, none), var(--modern-canvas);
+  background-size: var(--theme-bg-size, cover), cover, cover;
+}
+
+[data-interface="modern"] :is(.shell-sidebar, .shell-toolbar, .room-stage, .room-empty, .shell-chat, [role="dialog"], .login-entry, .login-details) {
+  border: 1px solid var(--modern-outline);
+  border-radius: 21px;
+  background: var(--modern-glass);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-text) 9%, transparent);
+}
+
+[data-interface="modern"][data-effects="on"] :is(.shell-sidebar, .shell-toolbar, .room-stage, .room-empty, .shell-chat, [role="dialog"], .login-entry, .login-details) {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+[data-interface="modern"] .shell-sidebar {
+  padding: 8px;
+}
+
+[data-interface="modern"] .shell-brand {
+  height: 54px;
+  justify-content: flex-start;
+  border: 0;
+  padding: 0 6px;
+}
+
+[data-interface="modern"] .shell-brand > .font-display {
+  flex: 1;
+  letter-spacing: -0.045em;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.modern-brand-icon {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--color-signal);
+  color: var(--color-signal-ink);
+}
+
+[data-interface="modern"] .interface-mode-control {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ground) 72%, transparent);
+}
+
+[data-interface="modern"] .interface-mode-control button {
+  border-radius: 999px;
+}
+
+[data-interface="modern"] .interface-mode-control button[aria-pressed="true"] {
+  background: var(--modern-tint);
+  color: var(--color-signal);
+}
+
+[data-interface="modern"] .shell-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 2px;
+}
+
+[data-interface="modern"] .shell-room { border: 0; }
+
+[data-interface="modern"] .shell-room-button {
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+[data-interface="modern"] .shell-room-button[aria-current="true"] {
+  border-color: color-mix(in srgb, var(--color-signal) 28%, var(--color-line));
+  background: var(--modern-tint);
+}
+
+[data-interface="modern"] .modern-room-icon {
+  display: block;
+  color: var(--color-dim);
+}
+
+[data-interface="modern"] .shell-room-button[aria-current="true"] .modern-room-icon { color: var(--color-signal); }
+
+[data-interface="modern"] .shell-room-count {
+  min-width: 22px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--color-raised);
+  color: var(--color-dim);
+  text-align: center;
+}
+
+[data-interface="modern"] .shell-self {
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  padding: 10px;
+  background: var(--modern-fill);
+}
+
+[data-interface="modern"] .shell-main,
+[data-interface="modern"] .shell-workspace { gap: 12px; }
+
+[data-interface="modern"] .shell-toolbar {
+  height: auto;
+  min-height: 58px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px;
+}
+
+[data-interface="modern"] .shell-toolbar h2 {
+  font-size: 19px;
+  letter-spacing: -0.035em;
+}
+
+[data-interface="modern"] .shell-toolbar-actions { flex-wrap: wrap; }
+[data-interface="modern"] .shell-chat { width: clamp(260px, 26vw, 380px); }
+[data-interface="modern"] .label:not(.text-live, .text-signal) { color: var(--color-dim); }
+
+[data-interface="modern"] .shell-chat-tabs {
+  gap: 3px;
+  margin: 8px;
+  padding: 3px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-ground);
+}
+
+[data-interface="modern"] .shell-chat-tabs button {
+  padding: 7px 4px;
+  border-radius: 9px;
+}
+
+[data-interface="modern"] .shell-chat-tabs button[aria-pressed="true"] { background: var(--modern-tint); }
+
+[data-interface="modern"] .chat-message-body {
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 4px 14px 14px;
+  background: var(--color-raised);
+  overflow-wrap: anywhere;
+}
+
+[data-interface="modern"] .chat-message-body[data-mine="true"] { background: var(--modern-tint); }
+
+[data-interface="modern"] .room-empty-content {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+}
+
+[data-interface="modern"] .modern-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 4px;
+  border: 1px solid var(--modern-outline);
+  border-radius: 21px;
+  background: var(--modern-tint);
+  color: var(--color-signal);
+}
+
+[data-interface="modern"] .modern-empty-title {
+  display: block;
+  text-align: center;
+  font-size: clamp(20px, 2.2vw, 29px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+[data-interface="modern"] .room-participant-row {
+  margin-bottom: 5px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--modern-fill);
+  grid-template-columns: minmax(0, 1fr) minmax(48px, 34%) 40px;
+  gap: 9px;
+}
+
+[data-interface="modern"] .room-participant-tile { border-radius: 15px; }
+
+[data-interface="modern"] :is(.room-participant-row, .room-participant-tile)[data-speaking="true"] {
+  border-color: var(--color-signal);
+  background: var(--modern-tint);
+}
+
+[data-interface="modern"] .room-stream { background: var(--modern-fill); }
+
+[data-interface="modern"] .btn {
+  height: 34px;
+  border-radius: 11px;
+}
+
+[data-interface="modern"] .btn-icon { width: 34px; }
+[data-interface="modern"] .btn:hover:not(:disabled):not(.btn-signal) { background: var(--modern-hover); }
+[data-interface="modern"] .btn[aria-pressed="true"]:not(.btn-live) { background: var(--modern-tint); }
+[data-interface="modern"] .field { border-radius: 11px; }
+
+[data-interface="modern"][data-effects="on"] :is(.btn, .interface-mode-control button, .shell-room-button, .shell-chat-tabs button, .room-participant-row, .room-participant-tile) {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+[data-interface="modern"][data-effects="on"] :is(.btn, .interface-mode-control button):active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+[data-interface="modern"][data-effects="on"] [role="dialog"] {
+  animation: modern-dialog-in 170ms ease-out both;
+}
+
+[data-interface="modern"][data-effects="off"] :is(.btn, .interface-mode-control button) { transition: none; }
+
+@keyframes modern-dialog-in {
+  from { opacity: 0; transform: translateY(7px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+.login-shell[data-interface="modern"] {
+  align-content: center;
+  gap: 16px;
+  padding: clamp(12px, 3vw, 36px);
+  background: var(--modern-canvas), var(--color-ground);
+}
+
+[data-interface="modern"] .login-entry h1 {
+  font-size: clamp(24px, 3vw, 38px);
+  letter-spacing: -0.06em;
+}
+
+[data-interface="modern"] .login-entry { min-height: min(460px, calc(100dvh - 24px)); }
+
+[data-interface="modern"] .login-details dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+[data-interface="modern"] .login-details dl > div {
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--modern-outline);
+  border-radius: 15px;
+  background: var(--modern-fill);
+}
+
+[data-interface="modern"] .login-details dl > div:first-child {
+  grid-column: 1 / -1;
+  background: var(--modern-tint);
+}
+
+@media (min-width: 1024px) {
+  .login-shell[data-interface="modern"] {
+    grid-template-columns: minmax(350px, 440px) minmax(450px, 560px);
+    justify-content: center;
+  }
+  [data-interface="modern"] .login-details { justify-content: center; }
+}
+
+@media (max-width: 1080px) {
+  [data-interface="modern"] .shell-workspace[data-chat-open="true"] {
+    display: grid;
+    grid-template-rows: minmax(138px, 1fr) minmax(160px, 0.85fr);
+  }
+  [data-interface="modern"] .shell-chat { width: 100%; }
+}
+
+@media (max-width: 680px) {
+  .theme-shell[data-interface="modern"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(170px, 38%) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+    overflow: auto;
+  }
+  [data-interface="modern"] .shell-main { min-height: 350px; }
+  [data-interface="modern"] .shell-brand { height: 42px; }
+  [data-interface="modern"] .shell-self { gap: 6px; }
+  [data-interface="modern"] .shell-workspace { gap: 8px; }
+}

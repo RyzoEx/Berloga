@@ -1,5 +1,5 @@
 "use client";
-import { HeadphoneOff, MicOff } from "lucide-react";
+import { HeadphoneOff, MicOff, Volume2 } from "lucide-react";
 import { ROOMS } from "@/lib/constants";
 import type { Peer } from "@/lib/types";
 import { Avatar, PersonName } from "./Avatar";
@@ -10,19 +10,23 @@ export function RoomList({ peers, current, connecting, onJoin }: Props) {
   const lobby = peers.filter((p) => !p.room);
 
   return (
-    <nav className="min-h-0 flex-1 overflow-y-auto" aria-label="Голосовые комнаты">
+    <nav className="shell-rooms min-h-0 flex-1 overflow-y-auto" aria-label="Голосовые комнаты">
       {ROOMS.map((room) => {
         const inRoom = peers.filter((p) => p.room === room.id);
         const active = current === room.id;
         return (
-          <section key={room.id} className="border-b border-line">
+          <section key={room.id} className="shell-room border-b border-line">
             <button
-              className={`flex w-full items-center justify-between px-4 py-3 text-left hover:bg-raised ${active ? "bg-raised" : ""}`}
+              className={`shell-room-button flex w-full items-center justify-between px-4 py-3 text-left hover:bg-raised ${active ? "bg-raised" : ""}`}
+              aria-current={active ? "true" : undefined}
               disabled={active || connecting}
               onClick={() => onJoin(room.id)}
             >
-              <span className={active ? "font-semibold text-signal" : "font-medium"}>{room.name}</span>
-              <span className="num text-faint">{inRoom.length}</span>
+              <span className={`flex items-center gap-2 ${active ? "font-semibold text-signal" : "font-medium"}`}>
+                <Volume2 size={16} className="modern-room-icon" aria-hidden="true" />
+                {room.name}
+              </span>
+              <span className="shell-room-count num text-faint">{inRoom.length}</span>
             </button>
             {inRoom.length > 0 && (
               <ul className="flex flex-col gap-1 px-4 pb-3">

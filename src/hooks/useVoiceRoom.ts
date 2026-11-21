@@ -14,8 +14,8 @@ import { supabase } from "@/lib/supabase";
 import { ECO_AUDIO_BPS, livekitRoomName } from "@/lib/constants";
 import { buildShare, type PresetId, type ShareHeight, PRESETS } from "@/lib/presets";
 import type { ServerSettings } from "@/lib/types";
+import type { ClientPreferences, StreamQuality } from "@/lib/clientPreferences";
 
-export type StreamQuality = "high" | "medium" | "low";
 const QUALITY: Record<StreamQuality, VideoQuality> = {
   high: VideoQuality.HIGH,
   medium: VideoQuality.MEDIUM,
@@ -37,12 +37,14 @@ export type StreamView = {
   sid: string;
   participantId: string;
   name: string;
+  watching: boolean;
+  quality: StreamQuality;
   track?: RemoteVideoTrack;
 };
 
-type Opts = { settings: ServerSettings; eco: boolean };
+type Opts = { settings: ServerSettings; eco: boolean } & Pick<ClientPreferences, "manualStreams" | "streamQuality">;
 
-export function useVoiceRoom({ settings, eco }: Opts) {
+export function useVoiceRoom({ settings, eco, manualStreams, streamQuality }: Opts) {
   const roomRef = useRef<Room | null>(null);
   const audioHost = useRef<HTMLElement | null>(null);
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -56,18 +58,19 @@ export function useVoiceRoom({ settings, eco }: Opts) {
   const [volumes, setVolumes] = useState<Record<string, number>>({});
   const [qualities, setQualities] = useState<Record<string, StreamQuality>>({});
   const [paused, setPaused] = useState<Record<string, boolean>>({});
+  const [watched, setWatched] = useState<Record<string, boolean>>({});
   const [hidden, setHidden] = useState(false);
   const micBeforeDeafen = useRef(true);
   const baseVideoBps = useRef<number[]>([]);
   const joinSeq = useRef(0); // номер последней попытки входа: устаревшие попытки сами отменяются
 
   // последние значения для обработчиков событий LiveKit
-  const latest = useRef({ eco, settings, volumes, qualities, paused, hidden, deafened });
-  latest.current = { eco, settings, volumes, qualities, paused, hidden, deafened };
+  const latest = useRef({ eco, settings, volumes, qualities, paused, watched, hidden, deafened, manualStreams, streamQuality });
+  latest.current = { eco, settings, volumes, qualities, paused, watched, hidden, deafened, manualStreams, streamQuality };
 
   const audioBps = eco ? Math.min(settings.audio_bitrate, ECO_AUDIO_BPS) : settings.audio_bitrate;
 
-  /** Громкость, качество и пауза у всех входящих потоков. */
+  /** Подписки на микрофоны не зависят от просмотра экрана. */
   const syncRemote = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
@@ -76,12 +79,19 @@ export function useVoiceRoom({ settings, eco }: Opts) {
       const vol = l.deafened ? 0 : (l.volumes[p.identity] ?? 1);
       p.setVolume(vol, Track.Source.Microphone);
       p.setVolume(vol, Track.Source.ScreenShareAudio);
-      for (const pub of p.videoTrackPublications.values()) {
-        if (pub.source !== Track.Source.ScreenShare) continue;
-        const q: StreamQuality = l.eco ? "low" : (l.qualities[pub.trackSid] ?? "high");
-        pub.setVideoQuality(QUALITY[q]);
-        if (l.eco) pub.setVideoFPS(15);
-        pub.setEnabled(!(l.paused[pub.trackSid] || l.hidden));
+      const screen = p.getTrackPublication(Track.Source.ScreenShare);
+      const watching = !l.manualStreams || (screen !== undefined && !!l.watched[screen.trackSid]);
+      for (const pub of p.trackPublications.values()) {
+        const isScreen = pub.source === Track.Source.ScreenShare;
+        const isScreenAudio = pub.source === Track.Source.ScreenShareAudio;
+        const subscribe = !(isScreen || isScreenAudio) || watching;
+        if (pub.isDesired !== subscribe) pub.setSubscribed(subscribe);
+        if (subscribe && isScreen) {
+          const q = l.eco ? "low" : (l.qualities[pub.trackSid] ?? l.streamQuality);
+          pub.setVideoQuality(QUALITY[q]);
+          pub.setVideoFPS(l.eco ? 15 : 0);
+          pub.setEnabled(!(l.paused[pub.trackSid] || l.hidden));
+        }
       }
     }
   }, []);
@@ -113,7 +123,7 @@ export function useVoiceRoom({ settings, eco }: Opts) {
 
   useEffect(() => {
     syncRemote();
-  }, [eco, qualities, paused, hidden, volumes, deafened, syncRemote]);
+  }, [eco, qualities, paused, watched, hidden, volumes, deafened, manualStreams, streamQuality, syncRemote]);
 
   useEffect(() => {
     applyCaps();
@@ -134,6 +144,7 @@ export function useVoiceRoom({ settings, eco }: Opts) {
     setStatus("idle");
     setDeafened(false);
     setPaused({});
+    setWatched({});
     setQualities({});
     setMicError(false);
     setAudioBlocked(false);
@@ -180,8 +191,13 @@ export function useVoiceRoom({ settings, eco }: Opts) {
         roomRef.current = room;
 
         const refresh = () => bump();
+        const syncAndRefresh = () => {
+          if (roomRef.current !== room) return;
+          syncRemote();
+          refresh();
+        };
         room
-          .on(RoomEvent.ParticipantConnected, refresh)
+          .on(RoomEvent.ParticipantConnected, syncAndRefresh)
           .on(RoomEvent.ParticipantDisconnected, refresh)
           .on(RoomEvent.ActiveSpeakersChanged, refresh)
           .on(RoomEvent.TrackMuted, refresh)
@@ -194,18 +210,15 @@ export function useVoiceRoom({ settings, eco }: Opts) {
             if (pub.source === Track.Source.ScreenShare) baseVideoBps.current = [];
             refresh();
           })
-          .on(RoomEvent.TrackPublished, () => {
-            refresh();
-            syncRemote();
-          })
-          .on(RoomEvent.TrackUnpublished, refresh)
-          .on(RoomEvent.TrackSubscribed, (track) => {
+          .on(RoomEvent.TrackPublished, syncAndRefresh)
+          .on(RoomEvent.TrackUnpublished, syncAndRefresh)
+          .on(RoomEvent.TrackSubscribed, (track, pub) => {
+            if (roomRef.current !== room || !pub.isDesired) return;
             if (track.kind === Track.Kind.Audio) {
               const el = track.attach();
               audioHost.current?.appendChild(el);
             }
-            syncRemote();
-            refresh();
+            syncAndRefresh();
           })
           .on(RoomEvent.TrackUnsubscribed, (track) => {
             track.detach().forEach((el) => el.remove());
@@ -213,7 +226,10 @@ export function useVoiceRoom({ settings, eco }: Opts) {
           })
           .on(RoomEvent.AudioPlaybackStatusChanged, () => setAudioBlocked(!room.canPlaybackAudio))
           .on(RoomEvent.Reconnecting, () => setStatus("connecting"))
-          .on(RoomEvent.Reconnected, () => setStatus("connected"))
+          .on(RoomEvent.Reconnected, () => {
+            syncAndRefresh();
+            setStatus("connected");
+          })
           .on(RoomEvent.Disconnected, () => {
             if (roomRef.current === room) {
               roomRef.current = null;
@@ -221,11 +237,12 @@ export function useVoiceRoom({ settings, eco }: Opts) {
             }
           });
 
-        await room.connect(url, token);
+        await room.connect(url, token, { autoSubscribe: false });
         if (seq !== joinSeq.current) {
           await room.disconnect();
           return;
         }
+        syncAndRefresh();
         setStatus("connected");
         await room.startAudio().catch(() => {});
 
@@ -317,7 +334,14 @@ export function useVoiceRoom({ settings, eco }: Opts) {
   const setVolume = (id: string, v: number) => setVolumes((s) => ({ ...s, [id]: v }));
   const setQuality = (sid: string, q: StreamQuality) => setQualities((s) => ({ ...s, [sid]: q }));
   const togglePause = (sid: string) => setPaused((s) => ({ ...s, [sid]: !s[sid] }));
-  const unlockAudio = () => roomRef.current?.startAudio().then(() => setAudioBlocked(false));
+  const unlockAudio = () => roomRef.current?.startAudio().then(() => setAudioBlocked(false)).catch(() => {});
+  const toggleWatch = (sid: string) => {
+    if (!watched[sid]) {
+      setQuality(sid, streamQuality);
+      void unlockAudio();
+    }
+    setWatched((s) => ({ ...s, [sid]: !s[sid] }));
+  };
 
   // --- снимок для рендера ---
   const room = roomRef.current;
@@ -338,10 +362,14 @@ export function useVoiceRoom({ settings, eco }: Opts) {
       if (!isLocal) {
         const pub = p.getTrackPublication(Track.Source.ScreenShare) as RemoteTrackPublication | undefined;
         if (pub) {
+          const watching = !manualStreams || !!watched[pub.trackSid];
+          const quality = (watching ? qualities[pub.trackSid] : undefined) ?? streamQuality;
           streams.push({
             sid: pub.trackSid,
             participantId: p.identity,
             name: p.name || p.identity,
+            watching,
+            quality: eco ? "low" : quality,
             track: pub.videoTrack as RemoteVideoTrack | undefined,
           });
         }
@@ -364,7 +392,7 @@ export function useVoiceRoom({ settings, eco }: Opts) {
     sharing: !!me?.isScreenShareEnabled,
     deafened,
     volumes,
-    qualities,
+    manualStreams,
     paused,
     hidden,
     audioHost,
@@ -377,5 +405,6 @@ export function useVoiceRoom({ settings, eco }: Opts) {
     setVolume,
     setQuality,
     togglePause,
+    toggleWatch,
   };
 }
